@@ -1,0 +1,178 @@
+import streamlit as st
+st.set_page_config(layout="wide")
+import pandas as pd
+import plotly.graph_objects as go
+from utils.model import load_ml_assets, predict_delay
+from utils.ui import inject_custom_css, sidebar_branding
+
+# Inject UI
+inject_custom_css()
+sidebar_branding()
+
+def section_label(text):
+    return st.markdown(f"""
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <div style="width:3px;height:16px;background:#F5A623"></div>
+      <div style="font-family:'DM Mono',monospace;font-size:0.65rem;
+                  color:#5A5F75;letter-spacing:0.12em">{text}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+def render_result(label: int, proba: float):
+    is_delayed = label == 1
+    color = "#E53935" if is_delayed else "#2ECC71"
+    verdict = "DELAYED" if is_delayed else "ON TIME"
+    pct = f"{proba:.0%}"
+    bar_pct = f"{proba*100:.1f}%"
+
+    st.markdown(f"""
+    <div style="margin: 8px 0 32px 0">
+      <div style="font-family:'DM Mono',monospace;font-size:0.65rem;
+                  color:#5A5F75;letter-spacing:0.12em;margin-bottom:12px">
+        PREDICTION RESULT
+      </div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:3rem;
+                  font-weight:700;letter-spacing:0.04em;color:{color};line-height:1">
+        {verdict}
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:0.8rem;
+                  color:#5A5F75;margin-top:10px">
+        {pct} probability of delay
+      </div>
+      <div style="margin-top:16px;position:relative">
+        <div style="background:#252830;height:4px;width:100%">
+          <div style="background:{color};height:4px;width:{bar_pct};
+                      transition:width 0.4s ease"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;
+                    font-family:'DM Mono',monospace;font-size:0.6rem;
+                    color:#5A5F75;margin-top:4px">
+          <span>0%</span><span>100%</span>
+        </div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+def show_predictor():
+    # Typography & Header
+    st.markdown("""
+    <div style="margin-bottom: 24px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:2.2rem;
+                  font-weight:700;letter-spacing:0.04em;color:#E8E8E8;line-height:1">
+        DELAY PREDICTOR
+      </div>
+      <div style="width:44px;height:3px;background:#F5A623;margin:10px 0 8px 0"></div>
+      <div style="font-family:'DM Mono',monospace;font-size:0.7rem;
+                  color:#5A5F75;letter-spacing:0.1em">
+        ENTER FLIGHT PARAMETERS FOR PROBABILITY ESTIMATION
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    model, encoders = load_ml_assets()
+    
+    if model is None or encoders is None:
+        st.error("SYSTEM ERROR: ML ASSETS NOT FOUND")
+        return
+
+    # Load options directly from Encoders
+    carrier_list = sorted(list(encoders['carrier'].classes_))
+    origin_state_list = sorted(list(encoders['origin_state'].classes_))
+    dest_state_list = sorted(list(encoders['dest_state'].classes_))
+
+    # Input Form
+    with st.form("prediction_form_v3"):
+        col1, col2 = st.columns([1, 1], gap="large")
+        
+        month_map = {
+            "January": 1, "February": 2, "March": 3, "April": 4, 
+            "May": 5, "June": 6, "July": 7, "August": 8, 
+            "September": 9, "October": 10, "November": 11, "December": 12
+        }
+        
+        with col1:
+            section_label("TEMPORAL PARAMETERS")
+            month_name = st.selectbox("Month", list(month_map.keys()), index=0)
+            day_of_week = st.selectbox("Day of Week", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
+            dep_hour = st.slider("Departure Hour", 0, 23, 12)
+            distance = st.number_input("Flight Distance (miles)", min_value=1, value=500)
+        
+        with col2:
+            section_label("ROUTING PARAMETERS")
+            carrier = st.selectbox("Airline Carrier", carrier_list)
+            origin_state = st.selectbox("Origin State", origin_state_list)
+            dest_state = st.selectbox("Destination State", dest_state_list)
+            
+            st.markdown("<div style='margin-top: 45px'></div>", unsafe_allow_html=True)
+            submitted = st.form_submit_button("RUN PREDICTION")
+        
+        # Convert inputs to numeric
+        month = month_map[month_name]
+        dow_map = {"Monday": 1, "Tuesday": 2, "Wednesday": 3, "Thursday": 4, "Friday": 5, "Saturday": 6, "Sunday": 7}
+        dow_num = dow_map[day_of_week]
+
+    if submitted:
+        # Automatic derivations
+        quarter = (month - 1) // 3 + 1
+        is_weekend = 1 if dow_num >= 6 else 0
+        
+        # Construct feature dict matching the 9-feature model
+        features = {
+            'month': month,
+            'day_of_week': dow_num,
+            'quarter': quarter,
+            'is_weekend': is_weekend,
+            'dep_hour': dep_hour,
+            'distance': distance,
+            'carrier': carrier,
+            'origin_state': origin_state,
+            'dest_state': dest_state
+        }
+        
+        label, proba = predict_delay(features, model, encoders)
+        
+        if label is not None:
+            st.markdown("<hr>", unsafe_allow_html=True)
+            
+            res_col1, res_col2 = st.columns([1, 1.2])
+            
+            with res_col1:
+                render_result(label, proba)
+
+            with res_col2:
+                importances = model.feature_importances_
+                feature_names = [
+                    'month', 'day_of_week', 'quarter', 'is_weekend', 
+                    'dep_hour', 'distance', 'carrier', 'origin_state', 'dest_state'
+                ]
+                
+                imp_df = pd.DataFrame({'Feature': feature_names, 'Importance': importances})
+                imp_df = imp_df.sort_values('Importance', ascending=True)
+                
+                fig = go.Figure(go.Bar(
+                    x=imp_df['Importance'],
+                    y=imp_df['Feature'],
+                    orientation='h',
+                    marker_color='#F5A623',
+                    marker_line_width=0,
+                ))
+                fig.update_layout(
+                    title=dict(
+                        text='TOP CONTRIBUTING FACTORS',
+                        font=dict(family='DM Mono', size=11, color='#5A5F75'),
+                        x=0, xanchor='left'
+                    ),
+                    plot_bgcolor='#0D0F14',
+                    paper_bgcolor='#0D0F14',
+                    font=dict(family='DM Mono', color='#E8E8E8', size=11),
+                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=True,
+                               color='#5A5F75', tickfont=dict(size=10)),
+                    yaxis=dict(showgrid=False, zeroline=False, color='#E8E8E8',
+                               tickfont=dict(size=10)),
+                    margin=dict(l=0, r=40, t=40, b=0),
+                    height=280,
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+if __name__ == "__main__":
+    show_predictor()

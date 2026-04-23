@@ -1,0 +1,149 @@
+import streamlit as st
+st.set_page_config(layout="wide")
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from utils.model import load_eval_results, load_ml_assets
+from utils.ui import inject_custom_css, sidebar_branding
+
+# Inject UI
+inject_custom_css()
+sidebar_branding()
+
+def render_classification_table(report_dict):
+    rows = ""
+    for label, metrics in report_dict.items():
+        if isinstance(metrics, dict):
+            rows += f"""
+            <tr>
+              <td style="padding:10px 12px;text-align:left">{label}</td>
+              <td style="padding:10px 12px">{metrics['precision']:.2f}</td>
+              <td style="padding:10px 12px">{metrics['recall']:.2f}</td>
+              <td style="padding:10px 12px">{metrics['f1-score']:.2f}</td>
+              <td style="padding:10px 12px">{int(metrics['support'])}</td>
+            </tr>"""
+    return st.markdown(f"""
+    <table style="width:100%;border-collapse:collapse;
+                  font-family:'DM Mono',monospace;font-size:0.75rem">
+      <thead>
+        <tr style="background:#F5A623;color:#0D0F14">
+          <th style="padding:10px 12px;text-align:left">CLASS</th>
+          <th style="padding:10px 12px">PRECISION</th>
+          <th style="padding:10px 12px">RECALL</th>
+          <th style="padding:10px 12px">F1</th>
+          <th style="padding:10px 12px">SUPPORT</th>
+        </tr>
+      </thead>
+      <tbody style="color:#E8E8E8">
+        {rows}
+      </tbody>
+    </table>
+    """, unsafe_allow_html=True)
+
+def show_performance():
+    # Typography & Header
+    st.markdown("""
+    <div style="margin-bottom: 24px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:2.2rem;
+                  font-weight:700;letter-spacing:0.04em;color:#E8E8E8;line-height:1">
+        MODEL PERFORMANCE
+      </div>
+      <div style="width:44px;height:3px;background:#F5A623;margin:10px 0 8px 0"></div>
+      <div style="font-family:'DM Mono',monospace;font-size:0.7rem;
+                  color:#5A5F75;letter-spacing:0.1em">
+        TECHNICAL EVALUATION OF THE XGBOOST CLASSIFICATION ENGINE
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    eval_data = load_eval_results()
+    model, _ = load_ml_assets()
+    
+    if eval_data is None:
+        st.error("SYSTEM ERROR: EVALUATION DATA NOT FOUND")
+        return
+
+    # Metrics overview
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("<p style='font-family: \"DM Mono\"; color: #5A5F75; font-size: 0.65rem; letter-spacing: 0.12em; margin-bottom: 10px;'>CONFUSION MATRIX</p>", unsafe_allow_html=True)
+        cm = eval_data['cm']
+        fig_cm = px.imshow(cm, text_auto=True, 
+                          labels=dict(x="Predicted", y="Actual", color="Count"),
+                          x=['On Time', 'Delayed'],
+                          y=['On Time', 'Delayed'],
+                          color_continuous_scale=[[0, "#161820"], [1, "#F5A623"]])
+        
+        fig_cm.update_layout(
+            plot_bgcolor="#0D0F14",
+            paper_bgcolor="#0D0F14",
+            font_family="DM Mono",
+            margin=dict(l=20, r=20, t=20, b=20)
+        )
+        st.plotly_chart(fig_cm, use_container_width=True, config={'displayModeBar': False})
+
+    with col2:
+        st.markdown("<p style='font-family: \"DM Mono\"; color: #5A5F75; font-size: 0.65rem; letter-spacing: 0.12em; margin-bottom: 10px;'>ROC CURVE</p>", unsafe_allow_html=True)
+        fpr = eval_data['fpr']
+        tpr = eval_data['tpr']
+        auc = eval_data['auc']
+        
+        fig_roc = go.Figure()
+        fig_roc.add_trace(go.Scatter(x=fpr, y=tpr, name=f'AUC: {auc:.3f}', mode='lines', line=dict(color='#F5A623', width=3)))
+        fig_roc.add_trace(go.Scatter(x=[0, 1], y=[0, 1], showlegend=False, line=dict(color='#252830', dash='dash')))
+        
+        fig_roc.update_layout(
+            plot_bgcolor="#0D0F14",
+            paper_bgcolor="#0D0F14",
+            font_family="DM Mono",
+            xaxis=dict(title="False Positive Rate", showgrid=False, color='#5A5F75'),
+            yaxis=dict(title="True Positive Rate", showgrid=False, color='#5A5F75'),
+            margin=dict(l=20, r=20, t=20, b=20),
+            legend=dict(yanchor="bottom", y=0.01, xanchor="right", x=0.99, font=dict(size=10))
+        )
+        st.plotly_chart(fig_roc, use_container_width=True, config={'displayModeBar': False})
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+    
+    # Classification Report
+    st.markdown("<p style='font-family: \"DM Mono\"; color: #5A5F75; font-size: 0.65rem; letter-spacing: 0.12em; margin-bottom: 20px;'>CLASSIFICATION REPORT</p>", unsafe_allow_html=True)
+    report = eval_data['report']
+    if isinstance(report, dict):
+        render_classification_table(report)
+    else:
+        st.code(report)
+
+    # Global Feature Importance
+    if model is not None:
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown("<p style='font-family: \"DM Mono\"; color: #5A5F75; font-size: 0.65rem; letter-spacing: 0.12em; margin-bottom: 10px;'>GLOBAL FEATURE INFLUENCE</p>", unsafe_allow_html=True)
+        
+        importances = model.feature_importances_
+        feature_names = [
+            'month', 'day_of_week', 'quarter', 'is_weekend', 
+            'dep_hour', 'distance', 'carrier', 'origin_state', 'dest_state'
+        ]
+        imp_df = pd.DataFrame({'Feature': feature_names, 'Importance': importances}).sort_values('Importance', ascending=True)
+        
+        fig_imp = go.Figure(go.Bar(
+            x=imp_df['Importance'],
+            y=imp_df['Feature'],
+            orientation='h',
+            marker_color='#F5A623',
+            marker_line_width=0,
+        ))
+        
+        fig_imp.update_layout(
+            plot_bgcolor="#0D0F14",
+            paper_bgcolor="#0D0F14",
+            font_family="DM Mono",
+            margin=dict(l=0, r=40, t=20, b=0),
+            height=400,
+            xaxis=dict(showgrid=False, title="Gini Importance / Gain", color='#5A5F75'),
+            yaxis=dict(showgrid=False, color='#E8E8E8')
+        )
+        st.plotly_chart(fig_imp, use_container_width=True, config={'displayModeBar': False})
+
+if __name__ == "__main__":
+    show_performance()

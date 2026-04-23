@@ -1,0 +1,102 @@
+======================================================================
+EDA REPORT — FLIGHT DELAY DATA WAREHOUSE
+Sample size: 300,000 rows | Columns: 23
+======================================================================
+
+SỐ DÒNG TỪNG BẢNG:
+  Fact_Flight                     1,048,571
+  Dim_Date                           11,323
+  Dim_Airline                            15
+  Dim_Airport                           668
+  Dim_Time                            1,440
+  Dim_Delay_Category                      6
+  Dim_Cancellation                        6
+
+
+PHÂN TÍCH NULL VALUES:
+  Không có NULL values!
+
+
+THỐNG KÊ arr_delay (TARGET VARIABLE):
+  count         300000.00 phút
+  mean               5.34 phút
+  std               58.34 phút
+  min             -117.00 phút
+  25%              -17.00 phút
+  50%               -7.00 phút
+  75%                8.00 phút
+  max             2833.00 phút
+
+
+PHÂN BỐ NHÃN (is_delayed = arr_delay > 15 phút):
+  Chuyến bay ĐÚNG GIỜ (0):  242,225  (80.7%)
+  Chuyến bay TRỄ     (1):   57,775  (19.3%)
+
+  Mất cân bằng nhãn! Cần dùng scale_pos_weight trong XGBoost
+     scale_pos_weight = 4.19
+
+
+PHÂN TÍCH FEATURES:
+
+  Số hãng bay (carrier): 15
+  Top 5 hãng trễ nhiều nhất:
+    B6: 25.5%
+    AA: 23.3%
+    NK: 23.2%
+    F9: 23.0%
+    HA: 22.4%
+
+  Số bang xuất phát (origin_state): 52
+  Số bang đến (dest_state): 52
+
+  Khoảng cách (distance):
+    Min:        31 dặm
+    Max:      5095 dặm
+    Mean:      834 dặm
+
+  Tỉ lệ trễ theo tháng:
+    Tháng  1:  23.1% ███████
+    Tháng  2:  15.2% █████
+
+  Tỉ lệ trễ theo giờ cất cánh (dep_hour):
+     0h:  50.0% ████████████████
+     1h:  54.3% ██████████████████
+     2h:  58.1% ███████████████████
+     3h:  35.0% ███████████
+     4h:   5.2% █
+     5h:   5.5% █
+     6h:   8.5% ██
+     7h:  11.9% ███
+     8h:  13.0% ████
+     9h:  15.6% █████
+    10h:  15.6% █████
+    11h:  17.1% █████
+    12h:  17.9% █████
+    13h:  19.3% ██████
+    14h:  20.6% ██████
+    15h:  22.1% ███████
+    16h:  22.8% ███████
+    17h:  23.1% ███████
+    18h:  24.2% ████████
+    19h:  26.6% ████████
+    20h:  28.9% █████████
+    21h:  30.2% ██████████
+    22h:  30.9% ██████████
+    23h:  40.7% █████████████
+
+
+GỢI Ý PREPROCESSING CHO TRAINING:
+  Features sẽ dùng:
+    - month, day_of_week, quarter, is_weekend  → Numeric
+    - dep_hour                                  → Numeric
+    - distance                                  → Numeric
+    - carrier                                   → Label Encode
+    - origin_state, dest_state                  → Label Encode
+
+  Xử lý null:
+
+  XGBoost params đề xuất:
+    scale_pos_weight = 4.19
+    n_estimators     = 300
+    max_depth        = 6
+    learning_rate    = 0.1

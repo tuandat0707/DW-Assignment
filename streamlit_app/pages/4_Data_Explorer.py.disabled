@@ -1,0 +1,8 @@
+import streamlit as st
+from utils.ui import inject_custom_css, sidebar_branding
+
+inject_custom_css()
+sidebar_branding()
+
+st.markdown("<div style='padding: 48px 0'>", unsafe_allow_html=True)
+st.info("DATA EXPLORER: SYSTEM OFFLINE. Requires live database connection.")

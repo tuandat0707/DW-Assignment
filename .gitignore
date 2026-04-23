@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# Streamlit
+.streamlit/
+
+# Large Model Files (optional, but kept here for now as they are small)
+# models/*.pkl
+
+# OS
+.DS_Store
+Thumbs.db
