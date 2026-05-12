@@ -21,4 +21,16 @@ def sidebar_branding():
     </style>"""
     st.markdown(css, unsafe_allow_html=True)
     with st.sidebar:
-        st.markdown("""<div style="position:fixed;bottom:0;left:0;width:210px;padding:10px 16px;border-top:1px solid #252830;font-family:'DM Mono',monospace;font-size:0.75rem;color:#5A5F75;letter-spacing:0.06em;line-height:2;background:#0D0F14;z-index:999">MODEL &nbsp;&nbsp; xgboost<br>AUC &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0.7401</div>""", unsafe_allow_html=True)
+        st.markdown("""<div style="position:fixed;bottom:0;left:0;width:210px;padding:14px 16px;border-top:1px solid #252830;font-family:'DM Mono',monospace;font-size:0.65rem;color:#5A5F75;letter-spacing:0.04em;line-height:1.6;background:#0D0F14;z-index:999">
+          <div style="color:#E8E8E8;margin-bottom:4px;font-size:0.6rem;letter-spacing:0.1em">CORE METRICS</div>
+          MODEL &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; xgboost<br>
+          AUC &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0.7401<br>
+          THRESHOLD &nbsp;&nbsp; 15m<br>
+          TRAIN SIZE &nbsp; 5.58M<br>
+          <div style="color:#E8E8E8;margin:8px 0 4px 0;font-size:0.6rem;letter-spacing:0.1em">HYPERPARAMS</div>
+          ESTIMATORS &nbsp; 300<br>
+          MAX DEPTH &nbsp;&nbsp; 6<br>
+          LEARN RATE &nbsp; 0.1<br>
+          POS WEIGHT &nbsp; 3.98<br>
+          <div style="margin-top:8px;font-size:0.55rem;opacity:0.6">UPDATED: 2026-05-12</div>
+        </div>""", unsafe_allow_html=True)
