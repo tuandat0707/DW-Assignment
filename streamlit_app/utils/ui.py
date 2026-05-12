@@ -21,4 +21,4 @@ def sidebar_branding():
     </style>"""
     st.markdown(css, unsafe_allow_html=True)
     with st.sidebar:
-        st.markdown("""<div style="position:fixed;bottom:0;left:0;width:210px;padding:10px 16px;border-top:1px solid #252830;font-family:'DM Mono',monospace;font-size:0.75rem;color:#5A5F75;letter-spacing:0.06em;line-height:2;background:#0D0F14;z-index:999">MODEL &nbsp;&nbsp; xgboost<br>AUC &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0.7268</div>""", unsafe_allow_html=True)
+        st.markdown("""<div style="position:fixed;bottom:0;left:0;width:210px;padding:10px 16px;border-top:1px solid #252830;font-family:'DM Mono',monospace;font-size:0.75rem;color:#5A5F75;letter-spacing:0.06em;line-height:2;background:#0D0F14;z-index:999">MODEL &nbsp;&nbsp; xgboost<br>AUC &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0.7401</div>""", unsafe_allow_html=True)
